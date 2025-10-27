@@ -13,7 +13,7 @@ import umap
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# 导入您的模型
+# 导入模型
 import sys
 sys.path.append('.') # 将项目根目录添加到Python路径
 from models.tlv_student import TactileEncoder

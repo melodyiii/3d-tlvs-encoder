@@ -1,7 +1,7 @@
 import os, json, yaml, numpy as np, torch, torch.nn.functional as F
 from glob import glob
 from torch.utils.data import Dataset, DataLoader
-from models.tlv_student import TactileEncoder, multi_pos_infonce
+from models.tlv_student import TactileEncoder, improved_multi_pos_infonce
 
 class TactileSet(Dataset):
     def __init__(self, root="dataset", T=16):
@@ -57,7 +57,7 @@ def main():
                 z_t, s = model(tac)
                 z_x_list = [F.normalize(z.to(device).float(), dim=-1) for z in batch["z_x_list"]]
                 all_text = torch.cat(z_x_list, dim=0)
-                loss = multi_pos_infonce(z_t, z_x_list, all_text, s) / cfg["accum_steps"]
+                loss = improved_multi_pos_infonce(z_t, z_x_list, all_text, s, method="simple") / cfg["accum_steps"]
             scaler.scale(loss).backward()
             if (it+1) % cfg["accum_steps"] == 0:
                 scaler.unscale_(opt)
