@@ -27,12 +27,9 @@ class TactileEncoder(nn.Module):
         return z, s
 
 def improved_multi_pos_infonce(z_q, pos_list, all_keys, logit_scale, method="weighted"):
-    """
-    改进的多正例对比学习损失
-    method: "weighted" | "hard" | "simple"
-    """
+   
     if method == "simple":
-        # 你原来的方法，保持兼容
+       
         logits_all = (z_q @ all_keys.t()) * logit_scale
         pos_logits = torch.stack([(z_q * p).sum(-1)*logit_scale for p in pos_list], dim=1)
         return (torch.logsumexp(logits_all,1) - torch.logsumexp(pos_logits,1)).mean()
@@ -61,18 +58,18 @@ def improved_multi_pos_infonce(z_q, pos_list, all_keys, logit_scale, method="wei
         # 困难负例挖掘版本
         logits_all = (z_q @ all_keys.t()) * logit_scale
         
-        # 找到最难负例（相似度最高的负例）
+       
         with torch.no_grad():
             pos_mask = torch.zeros_like(logits_all, dtype=torch.bool)
             for pos_emb in pos_list:
-                # 找到正例在all_keys中的位置
+               
                 pos_indices = (all_keys.unsqueeze(0) == pos_emb.unsqueeze(1)).all(-1)
                 pos_mask |= pos_indices
             
             # 负例的logits
             neg_logits = logits_all.clone()
-            neg_logits[pos_mask] = -1e9  # 掩码正例
-            hard_neg_idx = neg_logits.argmax(1)  # 最难负例
+            neg_logits[pos_mask] = -1e9 
+            hard_neg_idx = neg_logits.argmax(1)  
         
         losses = []
         for pos_emb in pos_list:
