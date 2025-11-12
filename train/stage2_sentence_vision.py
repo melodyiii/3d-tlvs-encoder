@@ -44,7 +44,7 @@ class TactileSetS2(Dataset):
         TT = tac.shape[0]; t0 = 0 if TT<=self.T else np.random.randint(0, TT-self.T+1)
         tac = tac[t0:t0+self.T]
         
-        # 修复：使用self.augment
+       
         if self.augment:
             tac = self.tactile_augmentation(tac)
 
@@ -77,9 +77,7 @@ def collate(batch):
     
     return {"tactile": tac, "z_x_list": out, "z_v": z_v}
 
-# =========================================================
-# 2. 配置文件解析修改
-# =========================================================
+
 def parse_cfg():
     p = argparse.ArgumentParser()
     p.add_argument("--config", type=str, default="configs/stage2_sentence_vision.yaml")
@@ -103,9 +101,9 @@ def parse_cfg():
     cfg["augment"] = bool(cfg.get("augment", True))  # 新增：解析augment参数
     return args, cfg
 
-# =========================================================
+
 # 3. 主训练循环修改
-# =========================================================
+
 def main():
     args, cfg = parse_cfg()
     torch.manual_seed(cfg["seed"])

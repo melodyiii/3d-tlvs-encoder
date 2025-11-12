@@ -9,14 +9,14 @@ class TactileEncoder(nn.Module):
             nn.Conv2d(64,128,3,1,1), nn.BatchNorm2d(128), nn.GELU(),
             nn.Conv2d(128,hid,3,1,1), nn.BatchNorm2d(hid), nn.GELU(),
         )
-        # 注意：GRU 输入尺寸与我们下面的展平保持一致（hid*16*16）
+        
         self.gru  = nn.GRU(hid*16*16, d_model, batch_first=True)
         self.proj = nn.Sequential(nn.LayerNorm(d_model), nn.Linear(d_model, proj_dim))
         self.logit_scale = nn.Parameter(torch.log(torch.tensor(1.0/tau)))  # = log(1/τ)
 
     def forward(self, x):                 # x: [B,T,16,16]
         B, T, H, W = x.shape
-        # —— 关键修改：把时间维并到batch，逐帧过CNN ——
+       
         x = x.view(B*T, 1, H, W)                 # [B*T,1,16,16]
         f = self.cnn(x).flatten(1)               # [B*T, hid*16*16]
         f = f.view(B, T, -1)                     # [B, T, hid*16*16]
