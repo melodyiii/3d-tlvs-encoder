@@ -23,40 +23,50 @@ class TactileEncoder(nn.Module):
         # 温度系数
         self.logit_scale = nn.Parameter(torch.log(torch.tensor(1.0/tau)))
 
-    def forward(self, x, return_seq=False): 
+    def forward(self, x, return_seq=False, return_feat_map=False, return_spatial_seq=False): 
         """
         x: [B, T, 16, 16]
-        return_seq: Bool. Stage 2 需要设为 True 以获取序列特征用于 Attention
+        return_seq:         Stage 2/3 需要序列特征用于 Attention
+        return_feat_map:    返回最后一帧 CNN 特征图 [B, hid, 16, 16]
+        return_spatial_seq: 返回每一帧 CNN 特征图 [B, T, hid, 16, 16]
         """
         B, T, H, W = x.shape
        
         # 1. CNN 提取空间特征
         x = x.view(B*T, 1, H, W)                 # [B*T, 1, 16, 16]
-        f = self.cnn(x).flatten(1)               # [B*T, hid*16*16]
+        f_map = self.cnn(x)                      # [B*T, hid, 16, 16]  ← 中间特征图
+        f = f_map.flatten(1)                     # [B*T, hid*16*16]
         f = f.view(B, T, -1)                     # [B, T, hid*16*16]
 
         # 2. GRU 提取时序特征
-        #  seq_out (所有时间步) 和 h (最后时间步)
         seq_out, h = self.gru(f)                 
         # seq_out: [B, T, d_model]
-        # h: [1, B, d_model] (GRU最后的隐藏状态)
+        # h: [1, B, d_model]
 
-        # 3. 计算全局特征 (用于 Stage 1 和 Stage 2 的文本对齐)
-        # 使用 h[-1] 作为全局表示
+        # 3. 全局特征
         z_global = F.normalize(self.proj(h[-1]), dim=-1)  # [B, 512]
-        
-        # 获取温度系数
         s = self.logit_scale.exp().clamp(1e-3, 1e3)
 
-        # 4. 返回逻辑
+        # 4. 空间特征（last frame & full sequence）
+        spatial_seq = f_map.view(B, T, *f_map.shape[1:])  # [B,T,hid,16,16]
+        feat_map = spatial_seq[:, -1, :, :, :]            # [B,hid,16,16]
+
         if return_seq:
-            # Stage 2: 需要序列特征给 CrossAttention
-            # 把投影层也应用到序列上: [B, T, d_model] -> [B, T, 512]
-            z_seq = self.proj(seq_out) 
-            
+            z_seq = F.normalize(self.proj(seq_out), dim=-1)  # [B, T, 512]
+            if return_feat_map and return_spatial_seq:
+                return z_seq, z_global, s, feat_map, spatial_seq
+            if return_feat_map:
+                return z_seq, z_global, s, feat_map
+            if return_spatial_seq:
+                return z_seq, z_global, s, spatial_seq
             return z_seq, z_global, s
         else:
-            # Stage 1: 只需要全局特征
+            if return_feat_map and return_spatial_seq:
+                return z_global, s, feat_map, spatial_seq
+            if return_feat_map:
+                return z_global, s, feat_map
+            if return_spatial_seq:
+                return z_global, s, spatial_seq
             return z_global, s
 
 
